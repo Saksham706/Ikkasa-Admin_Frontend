@@ -1,0 +1,77 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  background-color: #c5b693;
+  padding: 8px 30px;
+  color: #fff;
+  font-family: sans-serif;
+  border-radius: 5px;
+}
+
+.navbar-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 40px;
+}
+
+.navbar-logo-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.navbar-logo-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+
+.navbar-logo {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-right: 40px; /* space between logo and menu */
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative; /* make this relative so dropdown aligns properly */
+}
+
+.navbar-item {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  position: relative;
+}
+
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #c5b693;
+  border-radius: 5px;
+  margin-top: 5px;
+  box-shadow: 0 4px 10px wheat;
+  z-index: 100;
+  min-width: 160px;
+  color: black;
+}
+
+.dropdown-item {
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: white;
+}
