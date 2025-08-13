@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Navbar.css';
 import logo from '../../assets/Ikkasa_Logo_1.webp';
 
 const Navbar = () => {
- 
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <nav className="navbar">
@@ -12,8 +12,16 @@ const Navbar = () => {
         <div className="navbar-logo-text">Ikkasa Admin</div>
       </div>
 
-      <div className="navbar-menu">
-        <div className="navbar-item" >
+      {/* Hamburger icon for mobile */}
+      <div
+        className="navbar-toggle"
+        onClick={() => setMenuOpen(!menuOpen)}
+      >
+        ☰
+      </div>
+
+      <div className={`navbar-menu ${menuOpen ? 'active' : ''}`}>
+        <div className="navbar-item">
           <ul>
             <li>Forward orders</li>
             <li>Return orders</li>

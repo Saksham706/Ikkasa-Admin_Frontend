@@ -1,36 +1,46 @@
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
+.new-order {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  width: 80%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-}
-
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  font-size: 24px;
-  background: none;
-  border: none;
-  cursor: pointer;
+  justify-content: flex-end;
+  margin-bottom: 15px;
 }
 
 .new-order .btn {
   background-color: #bf8347;
+  color: white;
+  font-size: 16px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  white-space: nowrap;
+}
+
+.new-order .btn:hover {
+  background-color: #a66f3a;
+}
+
+/* Tablet screens */
+@media (max-width: 768px) {
+  .new-order {
+    justify-content: center;
+  }
+  .new-order .btn {
+    font-size: 14px;
+    padding: 6px 14px; /* smaller size */
+  }
+}
+
+/* Mobile screens */
+@media (max-width: 480px) {
+  .new-order {
+    width: 100%;
+    justify-content: center;
+  }
+  .new-order .btn {
+    width: auto; /* not full width */
+    font-size: 12px; /* smaller text */
+    padding: 5px 12px; /* compact padding */
+    border-radius: 4px;
+  }
 }

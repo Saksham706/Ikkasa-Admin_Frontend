@@ -6,10 +6,10 @@
   min-width: 160px;
   padding: 6px 0;
   font-size: 14px;
-
   position: absolute;
   top: 100%; /* below trigger */
-  left: -120px; /* shifts it to the left but not fully */
+  left: -120px; /* desktop position */
+  z-index: 1000; /* stay on top */
 }
 
 .action-menu div {
@@ -20,4 +20,36 @@
 
 .action-menu div:hover {
   background: #f0f0f0;
+}
+
+/* Responsive for smaller screens */
+@media (max-width: 768px) {
+  .action-menu {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    left: auto;
+    top: auto;
+    min-width: 180px;
+    border-radius: 8px;
+    background: wheat;
+  }
+
+  .action-menu div {
+    font-size: 16px;
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .action-menu {
+    min-width: 150px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .action-menu div {
+    font-size: 15px;
+    padding: 10px 14px;
+  }
 }

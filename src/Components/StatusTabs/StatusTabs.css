@@ -1,8 +1,9 @@
 .status-tabs {
   display: flex;
-  justify-content: flex-start; 
-  padding: 8px 16px; 
-  gap: 15px; 
+  justify-content: flex-start;
+  padding: 8px 16px;
+  gap: 15px;
+  flex-wrap: wrap; /* Allows wrapping on smaller screens */
 }
 
 .status-tabs button {
@@ -14,6 +15,7 @@
   color: black;
   font-size: 14px;
   transition: background 0.2s, border-color 0.2s;
+  flex-shrink: 0; /* Prevents squishing */
 }
 
 .status-tabs button:hover {
@@ -24,4 +26,32 @@
   background: #d4a762;
   color: black;
   border-color: #b68a4f;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .status-tabs {
+    justify-content: center; /* Center align for better look */
+    gap: 10px;
+  }
+  
+  .status-tabs button {
+    font-size: 13px;
+    padding: 7px 12px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .status-tabs {
+    flex-direction: column; /* Stack vertically */
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .status-tabs button {
+    width: 100%; /* Full width for easy tapping */
+    font-size: 12px;
+    padding: 6px 10px;
+  }
 }
