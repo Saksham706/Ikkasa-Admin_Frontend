@@ -2,3 +2,12 @@
     margin: 0;
     padding: 0;
 }
+
+
+.order-actions {
+  display: flex;
+  justify-content: space-between; /* left & right alignment */
+  align-items: center;
+  padding: 10px 20px; /* adjust spacing */
+}
+

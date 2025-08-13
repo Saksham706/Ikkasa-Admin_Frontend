@@ -1,19 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './Navbar.css';
 import logo from '../../assets/Ikkasa_Logo_1.webp';
 
 const Navbar = () => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState('Orders');
-
-  const toggleDropdown = () => {
-    setIsDropdownOpen(prev => !prev);
-  };
-
-  const handleSelect = (option) => {
-    setSelectedOrder(option);
-    setIsDropdownOpen(false);
-  };
+ 
 
   return (
     <nav className="navbar">
@@ -23,14 +13,11 @@ const Navbar = () => {
       </div>
 
       <div className="navbar-menu">
-        <div className="navbar-item" onClick={toggleDropdown}>
-          {selectedOrder} ▾
-          {isDropdownOpen && (
-            <div className="dropdown-menu">
-              <div className="dropdown-item" onClick={() => handleSelect('Forward')}>Forward</div>
-              <div className="dropdown-item" onClick={() => handleSelect('Return')}>Return</div>
-            </div>
-          )}
+        <div className="navbar-item" >
+          <ul>
+            <li>Forward orders</li>
+            <li>Return orders</li>
+          </ul>
         </div>
       </div>
     </nav>

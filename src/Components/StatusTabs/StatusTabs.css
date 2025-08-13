@@ -1,0 +1,27 @@
+.status-tabs {
+  display: flex;
+  justify-content: flex-start; 
+  padding: 8px 16px; 
+  gap: 15px; 
+}
+
+.status-tabs button {
+  background: white;
+  border: 1px solid #ccc;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: black;
+  font-size: 14px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.status-tabs button:hover {
+  background: #f2f2f2;
+}
+
+.status-tabs button.active {
+  background: #d4a762;
+  color: black;
+  border-color: #b68a4f;
+}

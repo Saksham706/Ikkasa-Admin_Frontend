@@ -1,0 +1,23 @@
+.action-menu {
+  background: wheat;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  border-radius: 6px;
+  min-width: 160px;
+  padding: 6px 0;
+  font-size: 14px;
+
+  position: absolute;
+  top: 100%; /* below trigger */
+  left: -120px; /* shifts it to the left but not fully */
+}
+
+.action-menu div {
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.action-menu div:hover {
+  background: #f0f0f0;
+}
