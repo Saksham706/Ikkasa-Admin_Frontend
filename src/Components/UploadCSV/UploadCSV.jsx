@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import "./UploadCSV.css";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function UploadCSV({ onUploaded }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -21,7 +23,7 @@ export default function UploadCSV({ onUploaded }) {
 
     try {
       setUploading(true);
-      const res = await fetch("http://localhost:4000/api/csv/upload", {
+      const res = await fetch(`${API_URL}/api/csv/upload`, {
         method: "POST",
         body: formData,
       });
