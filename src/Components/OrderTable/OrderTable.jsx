@@ -83,7 +83,7 @@ export default function OrderTable({ orders, onAction }) {
     };
 
     const response = await axios.post(
-      `${API_URL}http://localhost:4000/api/ekart/return`,
+      `${API_URL}/api/ekart/return`,
       payload
     );
 
