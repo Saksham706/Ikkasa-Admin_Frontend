@@ -14,7 +14,18 @@ export default function UploadCSV({ onUploaded }) {
 
   const handleUpload = async () => {
     if (!file) {
-      toast.error("⚠ Please select a CSV file first.");
+      toast.error("⚠ Please select a file first.");
+      return;
+    }
+
+    // Validate file type to only allow CSV and Excel
+    const allowedTypes = [
+      "text/csv",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+    ];
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(csv|xls|xlsx)$/i)) {
+      toast.error("❌ Unsupported file type. Please upload CSV or Excel files.");
       return;
     }
 
@@ -35,11 +46,12 @@ export default function UploadCSV({ onUploaded }) {
         return;
       }
 
-      // ✅ Success case
+      // Inform parent or refresh UI
       onUploaded?.();
       toast.success(
-        `✅ ${data.updatedOrders?.length || 0} orders updated successfully!`
+        `✅ ${data.updatedOrders?.length || 0} orders updated or created successfully!`
       );
+      setFile(null); // Reset file input after successful upload
     } catch (error) {
       toast.error(`❌ ${error.message}`);
     } finally {
@@ -55,11 +67,12 @@ export default function UploadCSV({ onUploaded }) {
           type="file"
           accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
           onChange={handleFileChange}
+          disabled={uploading}
         />
       </label>
       <span className="file-name">{file ? file.name : "No file chosen"}</span>
       <button onClick={handleUpload} disabled={uploading}>
-        {uploading ? "Uploading..." : "Upload CSV"}
+        {uploading ? "Uploading..." : "Upload File"}
       </button>
     </div>
   );

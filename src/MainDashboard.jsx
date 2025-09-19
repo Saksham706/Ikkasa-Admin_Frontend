@@ -48,7 +48,7 @@ export default function App() {
   // Refresh orders after CSV upload
   const handleCSVUploaded = () => {
     fetchOrders();
-    toast.success("CSV uploaded and orders refreshed");
+    toast.success("File uploaded and orders refreshed");
   };
 
   useEffect(() => {
