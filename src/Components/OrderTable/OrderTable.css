@@ -1,195 +1,174 @@
+/* Responsive styles added to OrderTable.css */
+
 .table-container {
-  display: flex;
-  justify-content: center;
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  margin: 0;
-  width: 98%;
-  transform-origin: top center;
-  position: relative;
-  padding: 10px;
+  margin: 20px 0;
 }
 
 .order-table {
   width: 100%;
   border-collapse: collapse;
+  font-family: Arial, sans-serif;
   font-size: 14px;
+  min-width: 900px; /* Ensure horizontal scroll if too narrow */
+}
+
+.order-table thead tr {
+  background-color: #f2f2f2;
+  text-align: left;
 }
 
 .order-table th,
 .order-table td {
+  padding: 8px 12px;
   border: 1px solid #ddd;
-  padding: 8px 10px;
   vertical-align: top;
 }
 
-.order-table th {
-  background-color: #f8f8f8;
-  text-align: left;
+.order-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
 }
 
-.menu-wrapper {
-  position: absolute;
-  top: 25px;
-  right: 0;
-  z-index: 1000;
-}
-
-.action-dropdown {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  min-width: 150px;
-}
-
-.action-dropdown li {
-  padding: 10px 14px;
-  cursor: pointer;
-  font-size: 14px;
-  border-bottom: 1px solid #eee;
-}
-
-.action-dropdown li:last-child {
-  border-bottom: none;
-}
-
-.action-dropdown li:hover {
-  background: #f5f5f5;
+.order-table tbody tr:hover {
+  background-color: #eef6ff;
 }
 
 .action-cell {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  background-color: #007bff;
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: background-color 0.2s ease;
   white-space: nowrap;
+}
+
+.btn:disabled,
+.btn[aria-busy="true"] {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+.btn:hover:not(:disabled) {
+  background-color: #0056b3;
 }
 
 .three-dots {
   cursor: pointer;
-  padding: 4px;
-}
-
-.action-cell .btn {
-  background-color: #bf8347;
-  color: white;
-  height: 25px;
-  line-height: 25px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
+  font-size: 20px;
+  user-select: none;
 }
 
 .pagination-controls {
+  margin-top: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 15px 0;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: Arial, sans-serif;
   font-size: 14px;
 }
 
 .pagination-controls button {
-  background-color: #bf8347; /* Match table button color */
-  color: white;
+  background-color: #007bff;
   border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+  color: white;
+  padding: 6px 10px;
   cursor: pointer;
-  font-size: 13px;
+  border-radius: 4px;
   transition: background-color 0.2s ease;
 }
 
-.pagination-controls button:hover:not(:disabled) {
-  background-color: #a56f3b;
-}
-
 .pagination-controls button:disabled {
-  background-color: #ccc;
+  background-color: #999;
   cursor: not-allowed;
 }
 
-.pagination-controls span {
-  font-weight: bold;
+.pagination-controls button:hover:not(:disabled) {
+  background-color: #0056b3;
 }
 
 .pagination-controls select {
   padding: 5px 8px;
-  font-size: 13px;
-  border: 1px solid #ccc;
+  font-size: 14px;
   border-radius: 4px;
+  border: 1px solid #ccc;
+  cursor: pointer;
 }
 
+/* Responsive: On smaller screens, reduce font size and hide less crucial columns */
 
-/* Tablet screens */
-@media (max-width: 1024px) {
-  .order-table th,
-  .order-table td {
-    padding: 6px 8px;
+@media (max-width: 1200px) {
+  .order-table {
     font-size: 13px;
+    min-width: 700px;
   }
 
-  .action-cell .btn {
-    font-size: 12px;
-    padding: 0 8px;
+  /* Hide less important columns on medium screens */
+  th:nth-child(11), /* Pickup Pincode */
+  th:nth-child(10), /* Pickup State */
+  th:nth-child(9),  /* Pickup City */
+  th:nth-child(16), /* Return Label 1 */
+  th:nth-child(17), /* Return Label 2 */
+  th:nth-child(18), /* Service Tier */
+  th:nth-child(19), /* Category */
+  th:nth-child(20), /* Unit Price */
+  td:nth-child(11),
+  td:nth-child(10),
+  td:nth-child(9),
+  td:nth-child(16),
+  td:nth-child(17),
+  td:nth-child(18),
+  td:nth-child(19),
+  td:nth-child(20) {
+    display: none;
   }
 }
 
-/* Mobile screens */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .order-table {
     font-size: 12px;
+    min-width: 600px;
   }
 
-  .order-table th,
-  .order-table td {
-    padding: 5px 6px;
-    white-space: normal; /* allow text wrapping */
+  /* Hide more columns on smaller screens */
+  th:nth-child(8), /* Pickup Address */
+  th:nth-child(12), /* GSTIN Number */
+  th:nth-child(13), /* HSN Code */
+  th:nth-child(14), /* Invoice Reference */
+  td:nth-child(8),
+  td:nth-child(12),
+  td:nth-child(13),
+  td:nth-child(14) {
+    display: none;
   }
 
-  .action-cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .action-cell .btn {
-    width: auto;
-    font-size: 11px;
-    padding: 2px 6px;
-  }
-
-  .three-dots {
-    font-size: 16px;
+  /* Buttons shrink */
+  .btn {
+    padding: 4px 10px;
+    font-size: 12px;
   }
 }
 
-/* Extra small screens */
-@media (max-width: 480px) {
-  .table-container {
-    padding: 5px;
-  }
-
-  .order-table th,
-  .order-table td {
-    padding: 4px;
+@media (max-width: 600px) {
+  .order-table {
     font-size: 11px;
+    min-width: 400px;
   }
 
-  .action-cell .btn {
-    font-size: 10px;
-    padding: 1px 5px;
-    height: auto;
-    line-height: normal;
-  }
-
-  .three-dots {
-    font-size: 14px;
+  /* Further column hiding for mobile */
+  th:nth-child(6), /* Payment */
+  th:nth-child(7), /* Payment Method */
+  td:nth-child(6),
+  td:nth-child(7) {
+    display: none;
   }
 }

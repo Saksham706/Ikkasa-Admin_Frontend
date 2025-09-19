@@ -7,11 +7,10 @@ import UploadCSV from "./Components/UploadCSV/UploadCSV";
 import CreateOrder from "./Components/CreateOrder/CreateOrder";
 import SearchBar from "./Components/SearchBar/SearchBar";
 import StatusTabs from "./Components/StatusTabs/StatusTabs";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./index.css";
 
-// ✅ Use environment variable for API URL
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function App() {
@@ -21,103 +20,112 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("New");
 
-  // Fetch from both sources
- const fetchOrders = async () => {
-  try {
-    const syncRes = await axios.get(`${API_URL}/api/shopify/sync-orders`);
-    const localRes = await axios.get(`${API_URL}/api/orders`);
-    
-    const allOrders = [...localRes.data, ...syncRes.data.data];
-    const sortedOrders = allOrders.sort(
-      (a, b) =>
-        new Date(b.orderDate || b.createdAt) -
-        new Date(a.orderDate || a.createdAt)
-    );
-    setOrders(sortedOrders);
-  } catch (err) {
-    console.error("Error fetching orders:", err);
-  }
-};
+  // Fetch all orders in MongoDB, including return shipment statuses
+  const fetchOrders = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/shopify/orders`);
+      const localOrders = Array.isArray(res.data?.data) ? res.data.data : [];
+      setOrders(localOrders);
+      console.log("✅ Orders from DB:", localOrders);
+    } catch (err) {
+      console.error("❌ Error fetching orders:", err);
+      toast.error("Failed to fetch orders");
+    }
+  };
+
+  // Manually trigger Shopify sync and refetch orders afterward
+  const handleSyncOrders = async () => {
+    try {
+      await axios.get(`${API_URL}/api/shopify/sync-orders`);
+      fetchOrders();
+      toast.success("Shopify sync completed");
+    } catch (err) {
+      console.error("❌ Error syncing orders:", err);
+      toast.error("Shopify sync failed");
+    }
+  };
+
+  // Refresh orders after CSV upload
+  const handleCSVUploaded = () => {
+    fetchOrders();
+    toast.success("CSV uploaded and orders refreshed");
+  };
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
+  // Save or update an order
   const handleSaveOrder = async (order) => {
     try {
       if (editOrderData) {
-        const res = await axios.put(
-          `${API_URL}/api/orders/${editOrderData._id}`,
-          order
-        );
-        setOrders(
-          orders.map((o) => (o._id === editOrderData._id ? res.data : o))
-        );
+        const res = await axios.put(`${API_URL}/api/orders/${editOrderData._id}`, order);
+        setOrders(orders.map((o) => (o._id === editOrderData._id ? res.data.data : o)));
       } else {
         const res = await axios.post(`${API_URL}/api/orders`, order);
-        setOrders([res.data, ...orders]);
+        setOrders([res.data.data, ...orders]);
       }
       setShowOrderForm(false);
       setEditOrderData(null);
+      toast.success("Order saved successfully");
     } catch (err) {
-      console.error("Error saving order:", err);
+      console.error("❌ Error saving order:", err);
+      toast.error("Failed to save order");
     }
   };
 
+  // Handle action menu events like edit, clone, delete
   const handleAction = async (action, order) => {
     try {
       if (action === "editOrder") {
         setEditOrderData(order);
         setShowOrderForm(true);
       } else if (action === "forwardShip") {
-        alert(`Forward shipping order ${order.orderId}`);
+        alert(`Forward shipping order ${order.orderId || order._id}`);
       } else if (action === "reverseShip") {
-        alert(`Reverse shipping order ${order.orderId}`);
+        alert(`Reverse shipping order ${order.orderId || order._id}`);
       } else if (action === "addTag") {
         const tag = prompt("Enter tag:");
         if (tag) {
           const updated = { ...order, tag };
-          const res = await axios.put(
-            `${API_URL}/api/orders/${order._id}`,
-            updated
-          );
-          setOrders(
-            orders.map((o) => (o._id === order._id ? res.data : o))
-          );
+          const res = await axios.put(`${API_URL}/api/orders/${order._id}`, updated);
+          setOrders(orders.map((o) => (o._id === order._id ? res.data.data : o)));
+          toast.success(`Tag '${tag}' added`);
         }
       } else if (action === "cloneOrder") {
-        const clonedOrder = { ...order, orderId: order.orderId + "-CLONE" };
+        const clonedOrder = {
+          ...order,
+          orderId: (order.orderId || order._id) + "-CLONE",
+        };
         delete clonedOrder._id;
         const res = await axios.post(`${API_URL}/api/orders`, clonedOrder);
-        setOrders([res.data, ...orders]);
+        setOrders([res.data.data, ...orders]);
+        toast.success("Order cloned");
       } else if (action === "deleteOrder") {
         if (window.confirm("Are you sure you want to delete this order?")) {
           await axios.delete(`${API_URL}/api/orders/${order._id}`);
           setOrders(orders.filter((o) => o._id !== order._id));
+          toast.success("Order deleted");
         }
       }
     } catch (err) {
-      console.error("Error in action:", err);
+      console.error("❌ Error in action:", err);
+      toast.error("Action failed");
     }
   };
 
-  const handleCSVUploaded = () => {
-    fetchOrders(); // refresh after CSV upload
-  };
-
+  // Filter orders by search term and selected status tab
   const filteredOrders = orders.filter((order) => {
     const orderString = JSON.stringify(order).toLowerCase();
-    return orderString.includes(searchTerm.toLowerCase());
+    const matchesStatus = selectedStatus ? (order.status || "New") === selectedStatus : true;
+    return orderString.includes(searchTerm.toLowerCase()) && matchesStatus;
   });
 
   return (
     <>
       <Navbar />
       <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-      <StatusTabs
-        selectedStatus={selectedStatus}
-        setSelectedStatus={setSelectedStatus}
-      />
+      <StatusTabs selectedStatus={selectedStatus} setSelectedStatus={setSelectedStatus} />
 
       {selectedStatus === "New" && (
         <>
@@ -129,6 +137,9 @@ export default function App() {
               }}
             />
             <UploadCSV onUploaded={handleCSVUploaded} />
+            <button className="sync-btn" onClick={handleSyncOrders} style={{ marginLeft: 12 }}>
+              Sync Shopify Orders
+            </button>
           </div>
           <OrderTable orders={filteredOrders} onAction={handleAction} />
         </>

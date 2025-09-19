@@ -23,26 +23,23 @@ export default function UploadCSV({ onUploaded }) {
 
     try {
       setUploading(true);
-      const res = await fetch(`${API_URL}/api/csv/upload`, {
+      const res = await fetch(`${API_URL}/api/csv/upload-merge`, {
         method: "POST",
         body: formData,
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        // Handle duplicate order error from backend
-        if (data.error && data.error.toLowerCase().includes("duplicate")) {
-          toast.warn(`⚠ ${data.error}`);
-        } else {
-          toast.error(`❌ ${data.error || "Upload failed"}`);
-        }
+      if (!res.ok || data.success === false) {
+        toast.error(`❌ ${data.error || "Upload failed"}`);
         return;
       }
 
-      // Success case
-      onUploaded();
-      toast.success(`✅ ${data.savedOrders.length} orders uploaded successfully!`);
+      // ✅ Success case
+      onUploaded?.();
+      toast.success(
+        `✅ ${data.updatedOrders?.length || 0} orders updated successfully!`
+      );
     } catch (error) {
       toast.error(`❌ ${error.message}`);
     } finally {

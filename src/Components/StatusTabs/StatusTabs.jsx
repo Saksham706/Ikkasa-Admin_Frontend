@@ -4,10 +4,17 @@ import "./StatusTabs.css";
 export default function StatusTabs({ selectedStatus, setSelectedStatus }) {
   const statuses = [
     "New",
-    "Scheduled",
-    "Picked up & In Transit",
+    "InfoReceived",
+    "OutForPickup",
+    "PickUpFromSeller",
+    "InTransit",
+    "Received at Facility",
     "Out for Delivery",
-    "Delivered"
+    "AttemptFail",
+    "Delivered",
+    "Available for Pickup",
+    "Exception",
+    "Expired",
   ];
 
   return (

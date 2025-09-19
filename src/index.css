@@ -6,8 +6,25 @@
 
 .order-actions {
   display: flex;
-  justify-content: space-between; /* left & right alignment */
+  justify-content: space-between;
   align-items: center;
-  padding: 10px 20px; /* adjust spacing */
+  padding: 10px 20px; 
+}
+
+.sync-btn{
+  height: 32px;
+  padding: 0 16px;
+  background-color: #bf8347;
+  color: white;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  white-space: nowrap;
+}
+
+.sync-btn:hover{
+  background-color: #a96f3b;
 }
 
