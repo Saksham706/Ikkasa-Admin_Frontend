@@ -1,38 +1,51 @@
 import { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "./AuthPage.css";
-import { Link } from "react-router-dom"
+
+const API_URL =  import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage("");
+  e.preventDefault();
+  setMessage("");
 
-    try {
-      const url = isLogin
-        ? `${API_URL}/api/auth/login`
-        : `${API_URL}/api/auth/signup`;
+  if (!email.trim() || !password.trim()) {
+    setMessage("❌ Please enter email and password.");
+    return;
+  }
 
-      const { data } = await axios.post(url, { email, password });
+  try {
+    const url = isLogin
+      ? `${API_URL}/api/auth/login`
+      : `${API_URL}/api/auth/signup`;
 
-      if (isLogin) {
+    const { data } = await axios.post(url, { email, password });
+
+    if (isLogin) {
+      if (data?.token) {
         localStorage.setItem("token", data.token);
         setMessage("✅ Logged in successfully!");
+        setTimeout(() => navigate("/main-dashboard"), 1000);
       } else {
-        setMessage("✅ Account created successfully! Please login.");
-        setIsLogin(true);
+        setMessage("❌ Login failed. No token received.");
       }
-    } catch (err) {
-      setMessage(
-        err.response?.data?.message || "❌ Something went wrong."
-      );
+    } else {
+      setMessage("✅ Account created successfully! Please login.");
+      setIsLogin(true);
+      setPassword("");
     }
-  };
+  } catch (err) {
+    setMessage(err.response?.data?.message || "❌ Something went wrong.");
+  }
+};
+
 
   return (
     <div className="auth-container">
@@ -45,6 +58,7 @@ export default function AuthPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="username"
           />
           <input
             type="password"
@@ -52,18 +66,24 @@ export default function AuthPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete={isLogin ? "current-password" : "new-password"}
           />
-          <Link to='/main-dashboard'><button type="submit">
-            {isLogin ? "Login" : "Sign Up"}
-          </button>
-          </Link>
+          <button type="submit">{isLogin ? "Login" : "Sign Up"}</button>
         </form>
 
         {message && <p className="message">{message}</p>}
 
         <p className="toggle-text">
           {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-          <span onClick={() => setIsLogin(!isLogin)}>
+          <span
+            className="toggle-link"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setMessage("");
+              setPassword("");
+            }}
+            style={{ cursor: "pointer", color: "#007bff" }}
+          >
             {isLogin ? "Sign Up" : "Login"}
           </span>
         </p>

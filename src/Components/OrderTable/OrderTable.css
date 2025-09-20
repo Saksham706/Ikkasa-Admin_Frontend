@@ -21,7 +21,6 @@
 .order-table th,
 .order-table td {
   padding: 8px 12px;
-  border: 1px solid #ddd;
   vertical-align: top;
 }
 
@@ -40,7 +39,7 @@
 }
 
 .btn {
-  background-color: #007bff;
+  background-color: #a56f3b;
   border: none;
   color: white;
   padding: 6px 14px;
@@ -58,7 +57,7 @@
 }
 
 .btn:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: #f67700;
 }
 
 .three-dots {
@@ -78,7 +77,7 @@
 }
 
 .pagination-controls button {
-  background-color: #007bff;
+  background-color: #a56f3b;
   border: none;
   color: white;
   padding: 6px 10px;
@@ -93,7 +92,7 @@
 }
 
 .pagination-controls button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: #f67700;
 }
 
 .pagination-controls select {

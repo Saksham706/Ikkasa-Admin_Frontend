@@ -13,11 +13,13 @@ export default function OrderTable({ orders, onAction }) {
   const [pageSize, setPageSize] = useState(100);
   const [loadingReturnId, setLoadingReturnId] = useState(null);
   const [localOrders, setLocalOrders] = useState([...orders]);
+  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const menuRef = useRef(null);
 
   // Sync localOrders if props.orders change
   useEffect(() => {
     setLocalOrders([...orders]);
+    setSelectedOrderIds([]); // Clear selection on orders change
   }, [orders]);
 
   useEffect(() => {
@@ -46,74 +48,181 @@ export default function OrderTable({ orders, onAction }) {
   const startIdx = (currentPage - 1) * pageSize;
   const paginatedOrders = localOrders.slice(startIdx, startIdx + pageSize);
 
-  // Handle Return API call
- const handleReturnClick = async (order) => {
-  setLoadingReturnId(order._id);
-
-  try {
-    // Provide default vendorName if missing
-    const vendorName = order.vendorName || "Ekart";
-
-    const payload = {
-      shopifyId: order.shopifyId,
-      orderId: order.orderId,
-      customerName: order.customerName,
-      customerPhone: order.customerPhone,
-      customerEmail: order.customerEmail,
-      customerAddress: order.customerAddress,
-      city: order.city,
-      state: order.state,
-      pincode: order.pincode,
-      products: order.products,
-      deadWeight: order.deadWeight,
-      length: order.length,
-      breadth: order.breadth,
-      height: order.height,
-      volumetricWeight: order.volumetricWeight,
-      amount: order.amount,
-      paymentMode: order.paymentMode,
-      vendorName,  // use default if missing
-      pickupAddress: order.pickupAddress,
-      pickupCity: order.pickupCity,
-      pickupState: order.pickupState,
-      pickupPincode: order.pickupPincode,
-      gstin: order.gstinNumber || "",
-      hsn: order.hsnCode || order.hsn || "",
-      invoiceId: order.invoiceReference || order.invoiceId || "",
-    };
-
-    const response = await axios.post(
-      `${API_URL}/api/ekart/return`,
-      payload
+  // Toggle a single order's checkbox
+  const toggleSelectOrder = (orderId) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId]
     );
+  };
 
-    if (response.data.success) {
-      setLocalOrders((prev) =>
-        prev.map((o) =>
-          o._id === order._id ? { ...o, status: "RETURN_REQUESTED" } : o
-        )
+  // Handle single return API call
+  const handleReturnClick = async (order) => {
+    setLoadingReturnId(order._id);
+
+    try {
+      // Provide default vendorName if missing
+      const vendorName = order.vendorName || "Ekart";
+
+      const payload = {
+        shopifyId: order.shopifyId,
+        orderId: order.orderId,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        customerEmail: order.customerEmail,
+        customerAddress: order.customerAddress,
+        city: order.city,
+        state: order.state,
+        pincode: order.pincode,
+        products: order.products,
+        deadWeight: order.deadWeight,
+        length: order.length,
+        breadth: order.breadth,
+        height: order.height,
+        volumetricWeight: order.volumetricWeight,
+        amount: order.amount,
+        paymentMode: order.paymentMode,
+        vendorName, // use default if missing
+        pickupAddress: order.pickupAddress,
+        pickupCity: order.pickupCity,
+        pickupState: order.pickupState,
+        pickupPincode: order.pickupPincode,
+        gstin: order.gstinNumber || "",
+        hsn: order.hsnCode || order.hsn || "",
+        invoiceId: order.invoiceReference || order.invoiceId || "",
+      };
+
+      const response = await axios.post(
+        `${API_URL}/api/ekart/return`,
+        payload
       );
-      toast.success(`Return requested successfully for order ${order.orderId}`);
-    } else {
-      toast.error(response.data.message || "Failed to create return");
+
+      if (response.data.success) {
+        setLocalOrders((prev) =>
+          prev.map((o) =>
+            o._id === order._id ? { ...o, status: "RETURN_REQUESTED" } : o
+          )
+        );
+        toast.success(`Return requested successfully for order ${order.orderId}`);
+      } else {
+        toast.error(response.data.message || "Failed to create return");
+      }
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Error calling Ekart API"
+      );
+    } finally {
+      setLoadingReturnId(null);
     }
-  } catch (err) {
-    toast.error(
-      err.response?.data?.message ||
-        err.message ||
-        "Error calling Ekart API"
-    );
-  } finally {
-    setLoadingReturnId(null);
-  }
-};
+  };
+
+  // Handle bulk return button click
+  const handleBulkReturn = async () => {
+    if (selectedOrderIds.length === 0) return;
+
+    setLoadingReturnId("bulk"); // a special loading state for bulk operations
+
+    try {
+      // Filter orders by selected IDs
+      const ordersToReturn = localOrders.filter((o) =>
+        selectedOrderIds.includes(o._id)
+      );
+
+      // Process returns sequentially (can be changed for concurrency if needed)
+      for (const order of ordersToReturn) {
+        const vendorName = order.vendorName || "Ekart";
+
+        const payload = {
+          shopifyId: order.shopifyId,
+          orderId: order.orderId,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          customerEmail: order.customerEmail,
+          customerAddress: order.customerAddress,
+          city: order.city,
+          state: order.state,
+          pincode: order.pincode,
+          products: order.products,
+          deadWeight: order.deadWeight,
+          length: order.length,
+          breadth: order.breadth,
+          height: order.height,
+          volumetricWeight: order.volumetricWeight,
+          amount: order.amount,
+          paymentMode: order.paymentMode,
+          vendorName,
+          pickupAddress: order.pickupAddress,
+          pickupCity: order.pickupCity,
+          pickupState: order.pickupState,
+          pickupPincode: order.pickupPincode,
+          gstin: order.gstinNumber || "",
+          hsn: order.hsnCode || order.hsn || "",
+          invoiceId: order.invoiceReference || order.invoiceId || "",
+        };
+
+        const response = await axios.post(`${API_URL}/api/ekart/return`, payload);
+
+        if (response.data.success) {
+          setLocalOrders((prev) =>
+            prev.map((o) =>
+              o._id === order._id ? { ...o, status: "RETURN_REQUESTED" } : o
+            )
+          );
+          toast.success(`Return requested successfully for order ${order.orderId}`);
+        } else {
+          toast.error(response.data.message || "Failed to create return");
+        }
+      }
+
+      setSelectedOrderIds([]); // Clear selection after all returns processed
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Error calling Ekart API for bulk return"
+      );
+    } finally {
+      setLoadingReturnId(null);
+    }
+  };
 
   return (
     <>
+      <div style={{ marginBottom: "1rem" }}>
+        <button
+          className="btn"
+          onClick={handleBulkReturn}
+          disabled={selectedOrderIds.length === 0 || loadingReturnId === "bulk"}
+          aria-busy={loadingReturnId === "bulk"}
+        >
+          {loadingReturnId === "bulk" ? "Processing..." : "Return all orders"}
+        </button>
+      </div>
+
       <div className="table-container">
         <table className="order-table">
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedOrderIds.length > 0 &&
+                    selectedOrderIds.length === paginatedOrders.length
+                  }
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedOrderIds(paginatedOrders.map((o) => o._id));
+                    } else {
+                      setSelectedOrderIds([]);
+                    }
+                  }}
+                  aria-label="Select all orders on page"
+                />
+              </th>
               <th>AWB</th>
               <th>Order Number</th>
               <th>Date</th>
@@ -142,6 +251,14 @@ export default function OrderTable({ orders, onAction }) {
             {[...new Map(paginatedOrders.map((o) => [o.orderId, o])).values()].map(
               (order) => (
                 <tr key={order._id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.includes(order._id)}
+                      onChange={() => toggleSelectOrder(order._id)}
+                      aria-label={`Select order ${order.orderId}`}
+                    />
+                  </td>
                   <td>{order.awb || ""}</td>
                   <td>#{order.orderId}</td>
                   <td>{formatDate(order.orderDate)}</td>
@@ -215,31 +332,19 @@ export default function OrderTable({ orders, onAction }) {
 
       {/* Pagination Controls */}
       <div className="pagination-controls">
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage(1)}
-        >
+        <button disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>
           ⏮ First
         </button>
-        <button
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage((p) => p - 1)}
-        >
+        <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
           ◀ Prev
         </button>
         <span>
           Page {currentPage} of {totalPages}
         </span>
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage((p) => p + 1)}
-        >
+        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
           Next ▶
         </button>
-        <button
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage(totalPages)}
-        >
+        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>
           Last ⏭
         </button>
 

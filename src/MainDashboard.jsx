@@ -36,9 +36,10 @@ export default function App() {
   // Manually trigger Shopify sync and refetch orders afterward
   const handleSyncOrders = async () => {
     try {
+      toast.info("⏳ Syncing Shopify orders..."); 
       await axios.get(`${API_URL}/api/shopify/sync-orders`);
       fetchOrders();
-      toast.success("Shopify sync completed");
+      toast.success("Shopify sync in process");
     } catch (err) {
       console.error("❌ Error syncing orders:", err);
       toast.error("Shopify sync failed");

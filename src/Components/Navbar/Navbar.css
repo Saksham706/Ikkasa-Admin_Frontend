@@ -49,10 +49,20 @@
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.navbar-item ul li:hover {
+.navbar-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.navbar-link:hover {
   background-color: rgba(255, 255, 255, 0.2);
   color: #000;
-  cursor: pointer;
 }
 
 /* Mobile styles */
