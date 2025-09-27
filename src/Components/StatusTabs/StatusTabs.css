@@ -1,57 +1,81 @@
 .status-tabs {
   display: flex;
-  justify-content: flex-start;
-  padding: 8px 16px;
-  gap: 15px;
-  flex-wrap: wrap; /* Allows wrapping on smaller screens */
+  gap: 0;
+  margin: 20px 0;
+  border-bottom: 2px solid #e5e7eb;
+  background-color: #f9fafb;
+  padding: 0 20px;
+  border-radius: 8px 8px 0 0;
 }
 
-.status-tabs button {
-  background: white;
-  border: 1px solid #ccc;
-  padding: 8px 14px;
+.status-tab {
+  background: none;
+  border: none;
+  padding: 12px 20px;
   cursor: pointer;
-  border-radius: 4px;
-  color: black;
   font-size: 14px;
-  transition: background 0.2s, border-color 0.2s;
-  flex-shrink: 0; /* Prevents squishing */
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 120px;
 }
 
-.status-tabs button:hover {
-  background: #f2f2f2;
+.status-tab:hover {
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
-.status-tabs button.active {
-  background: #d4a762;
-  color: black;
-  border-color: #b68a4f;
+.status-tab.active {
+  background-color: #fff;
+  color: #1f2937;
+  font-weight: 600;
 }
 
-/* Tablet */
+.status-label {
+  font-size: 14px;
+}
+
+.status-count {
+  font-size: 12px;
+  font-weight: 600;
+  background-color: #e5e7eb;
+  color: #6b7280;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.status-tab.active .status-count {
+  background-color: currentColor;
+  color: white;
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
   .status-tabs {
-    justify-content: center; /* Center align for better look */
-    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   
-  .status-tabs button {
-    font-size: 13px;
-    padding: 7px 12px;
-  }
-}
-
-/* Mobile */
-@media (max-width: 480px) {
-  .status-tabs {
-    flex-direction: column; /* Stack vertically */
-    align-items: stretch;
-    gap: 8px;
+  .status-tabs::-webkit-scrollbar {
+    display: none;
   }
   
-  .status-tabs button {
-    width: 100%; /* Full width for easy tapping */
+  .status-tab {
+    min-width: 100px;
+    padding: 8px 12px;
     font-size: 12px;
-    padding: 6px 10px;
+  }
+  
+  .status-count {
+    font-size: 10px;
+    padding: 1px 6px;
   }
 }

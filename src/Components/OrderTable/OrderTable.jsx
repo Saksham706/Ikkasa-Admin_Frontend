@@ -1,4 +1,3 @@
-// OrderTable.jsx
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
@@ -7,19 +6,21 @@ import "./OrderTable.css";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function OrderTable({ orders, onAction }) {
+export default function OrderTable({ orders, onAction, onOrderUpdate, loading = false }) {
   const [menuOpen, setMenuOpen] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [loadingReturnId, setLoadingReturnId] = useState(null);
   const [localOrders, setLocalOrders] = useState([...orders]);
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+  // NEW: Map of orderId => array of selected product indices
+  const [selectedProductsPerOrder, setSelectedProductsPerOrder] = useState({});
   const menuRef = useRef(null);
 
-  // Sync localOrders if props.orders change
   useEffect(() => {
     setLocalOrders([...orders]);
-    setSelectedOrderIds([]); // Clear selection on orders change
+    setSelectedOrderIds([]);
+    setSelectedProductsPerOrder({});
   }, [orders]);
 
   useEffect(() => {
@@ -33,22 +34,38 @@ export default function OrderTable({ orders, onAction }) {
     }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEsc);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEsc);
     };
   }, []);
 
-  const formatDate = (dateStr) =>
-    dateStr ? new Date(dateStr).toLocaleDateString() : "";
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    });
+  };
 
-  // Pagination Logic
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Pagination logic
   const totalPages = Math.ceil(localOrders.length / pageSize);
   const startIdx = (currentPage - 1) * pageSize;
   const paginatedOrders = localOrders.slice(startIdx, startIdx + pageSize);
 
-  // Toggle a single order's checkbox
+  // Order selection logic
   const toggleSelectOrder = (orderId) => {
     setSelectedOrderIds((prev) =>
       prev.includes(orderId)
@@ -57,13 +74,113 @@ export default function OrderTable({ orders, onAction }) {
     );
   };
 
-  // Handle single return API call
+  const toggleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedOrderIds(paginatedOrders.map((o) => o._id));
+    } else {
+      setSelectedOrderIds([]);
+    }
+  };
+
+  // NEW: Toggle individual product select for an order
+  const toggleSelectProduct = (orderId, productIdx) => {
+    setSelectedProductsPerOrder(prev => {
+      const prevSelected = prev[orderId] || [];
+      if (prevSelected.includes(productIdx)) {
+        return { ...prev, [orderId]: prevSelected.filter(idx => idx !== productIdx) };
+      } else {
+        return { ...prev, [orderId]: [...prevSelected, productIdx] };
+      }
+    });
+  };
+
+  // Refresh Ekart tracking
+  const refreshTracking = async (orderId) => {
+    try {
+      const res = await axios.get(`${API_URL}/api/ekart/tracking/${orderId}`);
+      if (res.data.success) {
+        setLocalOrders((prev) =>
+          prev.map((o) =>
+            o.orderId === orderId
+              ? { ...o, returnTracking: res.data.tracking }
+              : o
+          )
+        );
+        if (onOrderUpdate) {
+          onOrderUpdate();
+        }
+        toast.success("✅ Tracking status updated successfully");
+      } else {
+        toast.error(res.data.message || "Failed to refresh tracking");
+      }
+    } catch (err) {
+      console.error("Error refreshing tracking:", err);
+      toast.error("❌ Error refreshing tracking status");
+    }
+  };
+
+  // Handle file upload for smart checks
+  const handleFileUpload = async (file, orderId, productIndex) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await axios.post(`${API_URL}/api/ekart/upload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const photoUrl = uploadRes.data.url;
+
+      setLocalOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          if (order._id === orderId) {
+            const updatedProducts = order.products.map((prod, idx) => {
+              if (idx === productIndex) {
+                return {
+                  ...prod,
+                  smart_checks: [
+                    {
+                      item_title: prod.productName,
+                      checks: {
+                        M_PRODUCT_IMAGE_COLOR_PATTERN_MATCH: {
+                          inputs: { item_image: photoUrl },
+                          is_mandatory: true,
+                        },
+                      },
+                    },
+                  ],
+                  uploadedImageUrl: photoUrl,
+                };
+              }
+              return prod;
+            });
+            return { ...order, products: updatedProducts };
+          }
+          return order;
+        })
+      );
+
+      const productName = localOrders.find((o) => o._id === orderId).products[productIndex].productName;
+      toast.success(`✅ Photo uploaded for ${productName}`);
+    } catch (err) {
+      console.error("Photo upload error:", err);
+      toast.error("❌ Photo upload failed");
+    }
+  };
+
+  // Handle individual return request for selected products only
   const handleReturnClick = async (order) => {
     setLoadingReturnId(order._id);
-
     try {
-      // Provide default vendorName if missing
+      const selectedProductIndices = selectedProductsPerOrder[order._id] || [];
+      if (selectedProductIndices.length === 0) {
+        toast.warning("⚠️ Please select at least one product for return");
+        setLoadingReturnId(null);
+        return;
+      }
       const vendorName = order.vendorName || "Ekart";
+
+      // Filter only checked products
+      const productsToReturn = order.products.filter((_, idx) => selectedProductIndices.includes(idx));
 
       const payload = {
         shopifyId: order.shopifyId,
@@ -75,7 +192,10 @@ export default function OrderTable({ orders, onAction }) {
         city: order.city,
         state: order.state,
         pincode: order.pincode,
-        products: order.products,
+        products: productsToReturn.map((item) => ({
+          ...item,
+          smart_checks: item.smart_checks || [],
+        })),
         deadWeight: order.deadWeight,
         length: order.length,
         breadth: order.breadth,
@@ -83,7 +203,7 @@ export default function OrderTable({ orders, onAction }) {
         volumetricWeight: order.volumetricWeight,
         amount: order.amount,
         paymentMode: order.paymentMode,
-        vendorName, // use default if missing
+        vendorName,
         pickupAddress: order.pickupAddress,
         pickupCity: order.pickupCity,
         pickupState: order.pickupState,
@@ -93,133 +213,223 @@ export default function OrderTable({ orders, onAction }) {
         invoiceId: order.invoiceReference || order.invoiceId || "",
       };
 
-      const response = await axios.post(
-        `${API_URL}/api/ekart/return`,
-        payload
-      );
+      console.log("🚀 Sending return request for order:", order.orderId);
+
+      const response = await axios.post(`${API_URL}/api/ekart/return`, payload);
 
       if (response.data.success) {
         setLocalOrders((prev) =>
           prev.map((o) =>
-            o._id === order._id ? { ...o, status: "RETURN_REQUESTED" } : o
+            o._id === order._id
+              ? {
+                  ...o,
+                  status: "RETURN_REQUESTED",
+                  returnTracking: {
+                    currentStatus: "Return Initiated",
+                    history: [{
+                      status: "Return Initiated",
+                      timestamp: new Date(),
+                      description: "Return request submitted successfully"
+                    }],
+                    ekartTrackingId: response.data.trackingId,
+                    lastUpdated: new Date()
+                  }
+                }
+              : o
           )
         );
-        toast.success(`Return requested successfully for order ${order.orderId}`);
+        if (onOrderUpdate) {
+          onOrderUpdate();
+        }
+        toast.success(`✅ Return requested successfully for order ${order.orderId}`);
+        setSelectedProductsPerOrder(prev => ({ ...prev, [order._id]: [] }));
       } else {
-        toast.error(response.data.message || "Failed to create return");
+        toast.error(response.data.message || "Failed to create return request");
+        console.error("❌ Return request failed:", response.data);
       }
     } catch (err) {
-      toast.error(
-        err.response?.data?.message ||
-          err.message ||
-          "Error calling Ekart API"
-      );
+      console.error("❌ Return request error:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Error processing return request";
+      toast.error(`❌ ${errorMessage}`);
     } finally {
       setLoadingReturnId(null);
     }
   };
 
-  // Handle bulk return button click
+  // Handle bulk return requests (for all selected orders/products)
   const handleBulkReturn = async () => {
-    if (selectedOrderIds.length === 0) return;
+    if (selectedOrderIds.length === 0) {
+      toast.warning("⚠️ Please select orders to return");
+      return;
+    }
 
-    setLoadingReturnId("bulk"); // a special loading state for bulk operations
+    const confirmMessage = `Are you sure you want to process return requests for ${selectedOrderIds.length} orders?`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setLoadingReturnId("bulk");
 
     try {
-      // Filter orders by selected IDs
-      const ordersToReturn = localOrders.filter((o) =>
-        selectedOrderIds.includes(o._id)
-      );
+      const ordersToReturn = localOrders.filter((o) => selectedOrderIds.includes(o._id));
+      let successCount = 0;
+      let errorCount = 0;
 
-      // Process returns sequentially (can be changed for concurrency if needed)
       for (const order of ordersToReturn) {
-        const vendorName = order.vendorName || "Ekart";
+        try {
+          const selectedProductIndices = selectedProductsPerOrder[order._id] || [];
+          if (selectedProductIndices.length === 0) {
+            errorCount++;
+            continue; // Skip orders with no products selected
+          }
+          const vendorName = order.vendorName || "Ekart";
 
-        const payload = {
-          shopifyId: order.shopifyId,
-          orderId: order.orderId,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone,
-          customerEmail: order.customerEmail,
-          customerAddress: order.customerAddress,
-          city: order.city,
-          state: order.state,
-          pincode: order.pincode,
-          products: order.products,
-          deadWeight: order.deadWeight,
-          length: order.length,
-          breadth: order.breadth,
-          height: order.height,
-          volumetricWeight: order.volumetricWeight,
-          amount: order.amount,
-          paymentMode: order.paymentMode,
-          vendorName,
-          pickupAddress: order.pickupAddress,
-          pickupCity: order.pickupCity,
-          pickupState: order.pickupState,
-          pickupPincode: order.pickupPincode,
-          gstin: order.gstinNumber || "",
-          hsn: order.hsnCode || order.hsn || "",
-          invoiceId: order.invoiceReference || order.invoiceId || "",
-        };
+          const productsToReturn = order.products.filter((_, idx) => selectedProductIndices.includes(idx));
 
-        const response = await axios.post(`${API_URL}/api/ekart/return`, payload);
+          const payload = {
+            shopifyId: order.shopifyId,
+            orderId: order.orderId,
+            customerName: order.customerName,
+            customerPhone: order.customerPhone,
+            customerEmail: order.customerEmail,
+            customerAddress: order.customerAddress,
+            city: order.city,
+            state: order.state,
+            pincode: order.pincode,
+            products: productsToReturn.map((item) => ({
+              ...item,
+              smart_checks: item.smart_checks || [],
+            })),
+            deadWeight: order.deadWeight,
+            length: order.length,
+            breadth: order.breadth,
+            height: order.height,
+            volumetricWeight: order.volumetricWeight,
+            amount: order.amount,
+            paymentMode: order.paymentMode,
+            vendorName,
+            pickupAddress: order.pickupAddress,
+            pickupCity: order.pickupCity,
+            pickupState: order.pickupState,
+            pickupPincode: order.pickupPincode,
+            gstin: order.gstinNumber || "",
+            hsn: order.hsnCode || order.hsn || "",
+            invoiceId: order.invoiceReference || order.invoiceId || "",
+          };
 
-        if (response.data.success) {
-          setLocalOrders((prev) =>
-            prev.map((o) =>
-              o._id === order._id ? { ...o, status: "RETURN_REQUESTED" } : o
-            )
-          );
-          toast.success(`Return requested successfully for order ${order.orderId}`);
-        } else {
-          toast.error(response.data.message || "Failed to create return");
+          const response = await axios.post(`${API_URL}/api/ekart/return`, payload);
+
+          if (response.data.success) {
+            setLocalOrders((prev) =>
+              prev.map((o) =>
+                o._id === order._id
+                  ? {
+                      ...o,
+                      status: "RETURN_REQUESTED",
+                      returnTracking: {
+                        currentStatus: "Return Initiated",
+                        history: [{
+                          status: "Return Initiated",
+                          timestamp: new Date(),
+                          description: "Bulk return request submitted"
+                        }],
+                        ekartTrackingId: response.data.trackingId,
+                        lastUpdated: new Date()
+                      }
+                    }
+                  : o
+              )
+            );
+            successCount++;
+            setSelectedProductsPerOrder(prev => ({ ...prev, [order._id]: [] }));
+          } else {
+            errorCount++;
+            console.error("❌ Bulk return failed for order:", order.orderId, response.data);
+          }
+        } catch (orderError) {
+          errorCount++;
+          console.error("❌ Error processing return for order:", order.orderId, orderError);
         }
       }
 
-      setSelectedOrderIds([]); // Clear selection after all returns processed
+      if (onOrderUpdate) {
+        onOrderUpdate();
+      }
+
+      setSelectedOrderIds([]);
+
+      if (successCount > 0) {
+        toast.success(`✅ Successfully processed ${successCount} return requests`);
+      }
+      if (errorCount > 0) {
+        toast.error(`❌ Failed to process ${errorCount} return requests (No products selected or error)`);
+      }
     } catch (err) {
-      toast.error(
-        err.response?.data?.message ||
-          err.message ||
-          "Error calling Ekart API for bulk return"
-      );
+      console.error("❌ Bulk return error:", err);
+      toast.error("❌ Bulk return operation failed");
     } finally {
       setLoadingReturnId(null);
     }
   };
 
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", padding: "40px" }}>
+        <p>⏳ Loading orders...</p>
+      </div>
+    );
+  }
+
+  if (localOrders.length === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: "40px" }}>
+        <p>📦 No orders found</p>
+        <p style={{ color: "#666", fontSize: "14px" }}>
+          Try adjusting your search criteria or sync orders from Shopify
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div style={{ marginBottom: "1rem" }}>
+      {/* Bulk Actions */}
+      <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "12px" }}>
         <button
-          className="btn"
+          className="btn bulk-return-btn"
           onClick={handleBulkReturn}
           disabled={selectedOrderIds.length === 0 || loadingReturnId === "bulk"}
-          aria-busy={loadingReturnId === "bulk"}
+          style={{
+            backgroundColor: selectedOrderIds.length > 0 ? "#dc2626" : "#9ca3af",
+            color: "white",
+            padding: "8px 16px",
+            borderRadius: "6px",
+            border: "none",
+            cursor: selectedOrderIds.length > 0 ? "pointer" : "not-allowed"
+          }}
         >
-          {loadingReturnId === "bulk" ? "Processing..." : "Return all orders"}
+          {loadingReturnId === "bulk" ? "⏳ Processing..." : `🔄 Return Selected Orders (${selectedOrderIds.length})`}
         </button>
+        {selectedOrderIds.length > 0 && (
+          <span style={{ color: "#666", fontSize: "14px" }}>
+            {selectedOrderIds.length} orders selected
+          </span>
+        )}
       </div>
 
+      {/* Orders Table */}
       <div className="table-container">
         <table className="order-table">
           <thead>
             <tr>
-              <th>
+              <th style={{ width: "40px" }}>
                 <input
                   type="checkbox"
                   checked={
                     selectedOrderIds.length > 0 &&
                     selectedOrderIds.length === paginatedOrders.length
                   }
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedOrderIds(paginatedOrders.map((o) => o._id));
-                    } else {
-                      setSelectedOrderIds([]);
-                    }
-                  }}
+                  onChange={(e) => toggleSelectAll(e.target.checked)}
                   aria-label="Select all orders on page"
                 />
               </th>
@@ -243,74 +453,184 @@ export default function OrderTable({ orders, onAction }) {
               <th>Service Tier</th>
               <th>Category</th>
               <th>Unit Price</th>
-              <th>Status</th>
-              <th>Action</th>
+              <th>Status & Tracking</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {[...new Map(paginatedOrders.map((o) => [o.orderId, o])).values()].map(
-              (order) => (
-                <tr key={order._id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedOrderIds.includes(order._id)}
-                      onChange={() => toggleSelectOrder(order._id)}
-                      aria-label={`Select order ${order.orderId}`}
-                    />
-                  </td>
-                  <td>{order.awb || ""}</td>
-                  <td>#{order.orderId}</td>
-                  <td>{formatDate(order.orderDate)}</td>
-                  <td>
-                    <div>{order.customerName}</div>
+            {[...new Map(paginatedOrders.map((o) => [o.orderId, o])).values()].map((order) => (
+              <tr key={order._id} className={selectedOrderIds.includes(order._id) ? "selected" : ""}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedOrderIds.includes(order._id)}
+                    onChange={() => toggleSelectOrder(order._id)}
+                    aria-label={`Select order ${order.orderId}`}
+                  />
+                </td>
+                <td>{order.awb || "-"}</td>
+                <td>
+                  <strong>#{order.orderId}</strong>
+                </td>
+                <td>{formatDate(order.orderDate)}</td>
+                <td>
+                  <div className="customer-details">
+                    <div><strong>{order.customerName}</strong></div>
                     <div>{order.customerPhone}</div>
-                    <div>{order.customerEmail}</div>
-                    <div>{order.customerAddress}</div>
-                  </td>
-                  <td>
+                    <div style={{ fontSize: "12px", color: "#666" }}>{order.customerEmail}</div>
+                    <div style={{ fontSize: "12px", marginTop: "4px" }}>{order.customerAddress}</div>
+                  </div>
+                </td>
+                <td>
+                  <div className="products-cell">
                     {order.products?.map((p, i) => (
-                      <div key={i}>
-                        {p.productName} (Qty: {p.quantity})
+                      <div key={i} className="product-item" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {/* Per-product checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={selectedProductsPerOrder[order._id]?.includes(i) || false}
+                          onChange={() => toggleSelectProduct(order._id, i)}
+                          aria-label={`Select product ${p.productName} for return`}
+                        />
+                        <div className="product-info">
+                          <strong>{p.productName}</strong> <span className="qty">(Qty: {p.quantity})</span>
+                        </div>
+                        {p.imageUrl && (
+                          <div className="product-image-container">
+                            <img
+                              src={`${API_URL}${p.imageUrl}`}
+                              alt={p.productName}
+                              className="csv-product-image"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                console.error('Error loading CSV image:', p.imageUrl);
+                              }}
+                            />
+                            <span className="image-source">From CSV</span>
+                          </div>
+                        )}
+                        <div className="product-upload">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                handleFileUpload(file, order._id, i);
+                              }
+                            }}
+                            style={{ fontSize: "12px" }}
+                          />
+                          {p.previewImage && (
+                            <div className="manual-image-container">
+                              <img
+                                src={p.previewImage}
+                                alt="Preview"
+                                className="uploaded-image"
+                                style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "4px" }}
+                              />
+                              <span className="image-source">Preview</span>
+                            </div>
+                          )}
+                          {p.smart_checks?.[0]?.checks?.M_PRODUCT_IMAGE_COLOR_PATTERN_MATCH?.inputs?.item_image && (
+                            <div className="manual-image-container">
+                              <img
+                                src={p.smart_checks[0].checks.M_PRODUCT_IMAGE_COLOR_PATTERN_MATCH.inputs.item_image}
+                                alt="Manual upload"
+                                className="uploaded-image"
+                                style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "4px" }}
+                              />
+                              <span className="image-source">Uploaded</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
-                  </td>
-                  <td>
-                    <div>Dead Weight: {order.deadWeight} kg</div>
-                    <div>
-                      Dimensions: {order.length} x {order.breadth} x {order.height} cm
-                    </div>
-                    <div>Vol. Weight: {order.volumetricWeight} kg</div>
-                  </td>
-                  <td>₹{order.amount}</td>
-                  <td>{order.paymentMode}</td>
-                  <td>
-                    <div>{order.vendorName}</div>
-                    <div>{order.pickupAddress}</div>
-                  </td>
-                  <td>{order.pickupCity || ""}</td>
-                  <td>{order.pickupState || ""}</td>
-                  <td>{order.pickupPincode || ""}</td>
-                  <td>{order.gstinNumber || ""}</td>
-                  <td>{order.hsnCode || order.hsn || ""}</td>
-                  <td>{order.invoiceReference || order.invoiceId || ""}</td>
-                  <td>{order.returnLabel1 || ""}</td>
-                  <td>{order.returnLabel2 || ""}</td>
-                  <td>{order.serviceTier || ""}</td>
-                  <td>{order.category || ""}</td>
-                  <td>{order.unitPrice ? `₹${order.unitPrice}` : ""}</td>
-                  <td>{order.status}</td>
-                  <td className="action-cell">
+                  </div>
+                </td>
+                <td>
+                  <div className="package-details">
+                    <div><strong>Weight:</strong> {order.deadWeight} kg</div>
+                    <div><strong>Dimensions:</strong></div>
+                    <div>{order.length} × {order.breadth} × {order.height} cm</div>
+                    <div><strong>Vol. Weight:</strong> {order.volumetricWeight} kg</div>
+                  </div>
+                </td>
+                <td>
+                  <strong>₹{order.amount}</strong>
+                </td>
+                <td>{order.paymentMode}</td>
+                <td>
+                  <div>
+                    <div><strong>{order.vendorName}</strong></div>
+                    <div style={{ fontSize: "12px" }}>{order.pickupAddress}</div>
+                  </div>
+                </td>
+                <td>{order.pickupCity || "-"}</td>
+                <td>{order.pickupState || "-"}</td>
+                <td>{order.pickupPincode || "-"}</td>
+                <td>{order.gstinNumber || "-"}</td>
+                <td>{order.hsnCode || order.hsn || "-"}</td>
+                <td>{order.invoiceReference || order.invoiceId || "-"}</td>
+                <td>{order.returnLabel1 || "-"}</td>
+                <td>{order.returnLabel2 || "-"}</td>
+                <td>{order.serviceTier || "-"}</td>
+                <td>{order.category || "-"}</td>
+                <td>{order.unitPrice ? `₹${order.unitPrice}` : "-"}</td>
+                {/* Status & Tracking */}
+                <td className="status-tracking-cell">
+                  <div className="status-info">
+                    <span className={`status-badge status-${order.status?.toLowerCase().replace('_', '-') || 'new'}`}>
+                      {order.status || "New"}
+                    </span>
+                    {order.returnTracking?.ekartTrackingId && (
+                      <div className="tracking-info">
+                        <div className="tracking-id">
+                          <strong>Tracking:</strong> {order.returnTracking.ekartTrackingId}
+                        </div>
+                        <div className="current-status">
+                          <strong>Current:</strong> {order.returnTracking.currentStatus}
+                        </div>
+                        {order.returnTracking.history && order.returnTracking.history.length > 0 && (
+                          <details className="tracking-history">
+                            <summary>History ({order.returnTracking.history.length})</summary>
+                            <div className="history-list">
+                              {order.returnTracking.history.map((h, i) => (
+                                <div key={i} className="history-item">
+                                  <div className="history-status">{h.status}</div>
+                                  <div className="history-time">{formatDateTime(h.timestamp)}</div>
+                                  {h.description && (
+                                    <div className="history-desc">{h.description}</div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                        <button
+                          onClick={() => refreshTracking(order.orderId)}
+                          className="btn btn-sm refresh-btn"
+                          title="Refresh tracking status"
+                        >
+                          🔄 Refresh
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </td>
+                {/* Actions */}
+                <td className="action-cell">
+                  <div className="action-buttons">
                     <button
-                      className="btn"
+                      className={`btn return-btn ${order.status === 'RETURN_REQUESTED' ? 'disabled' : ''}`}
                       onClick={() => handleReturnClick(order)}
-                      disabled={loadingReturnId === order._id}
-                      aria-busy={loadingReturnId === order._id}
+                      disabled={loadingReturnId === order._id || order.status === 'RETURN_REQUESTED'}
+                      title={order.status === 'RETURN_REQUESTED' ? 'Return already requested' : 'Request return'}
                     >
-                      {loadingReturnId === order._id ? "Processing..." : "Return"}
+                      {loadingReturnId === order._id ? "⏳" : order.status === 'RETURN_REQUESTED' ? "✅ Returned" : "🔄 Return"}
                     </button>
-                    <span
-                      className="three-dots"
+                    <button
+                      className="btn btn-menu"
                       onClick={(e) => {
                         const rect = e.target.getBoundingClientRect();
                         setMenuOpen({
@@ -319,52 +639,68 @@ export default function OrderTable({ orders, onAction }) {
                           left: rect.left,
                         });
                       }}
+                      title="More actions"
                     >
                       ⋮
-                    </span>
-                  </td>
-                </tr>
-              )
-            )}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
       {/* Pagination Controls */}
       <div className="pagination-controls">
-        <button disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>
-          ⏮ First
-        </button>
-        <button disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
-          ◀ Prev
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
-          Next ▶
-        </button>
-        <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>
-          Last ⏭
-        </button>
-
-        <select
-          value={pageSize}
-          onChange={(e) => {
-            setPageSize(Number(e.target.value));
-            setCurrentPage(1);
-          }}
-          aria-label="Select page size"
-        >
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-          <option value={250}>250</option>
-          <option value={500}>500</option>
-          <option value={1000}>1000</option>
-        </select>
+        <div className="pagination-buttons">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(1)}
+          >
+            ⏮ First
+          </button>
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+          >
+            ◀ Prev
+          </button>
+          <span className="page-info">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+          >
+            Next ▶
+          </button>
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(totalPages)}
+          >
+            Last ⏭
+          </button>
+        </div>
+        <div className="page-size-selector">
+          <label htmlFor="page-size">Show:</label>
+          <select
+            id="page-size"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={250}>250</option>
+            <option value={500}>500</option>
+            <option value={1000}>1000</option>
+          </select>
+        </div>
       </div>
 
-      {/* Render menu OUTSIDE table */}
       {menuOpen && (
         <div
           ref={menuRef}
@@ -382,10 +718,9 @@ export default function OrderTable({ orders, onAction }) {
         </div>
       )}
 
-      {/* Toast Container for notifications */}
       <ToastContainer
         position="top-right"
-        autoClose={3000}
+        autoClose={4000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
@@ -393,6 +728,7 @@ export default function OrderTable({ orders, onAction }) {
         pauseOnFocusLoss
         draggable
         pauseOnHover
+        theme="colored"
       />
     </>
   );

@@ -18,6 +18,33 @@
   text-align: left;
 }
 
+.status-bar-container {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+}
+
+.status-pill.completed {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-pill.active {
+  background-color: #007bff;
+  color: white;
+  font-weight: bold;
+}
+
+
 .order-table th,
 .order-table td {
   padding: 8px 12px;

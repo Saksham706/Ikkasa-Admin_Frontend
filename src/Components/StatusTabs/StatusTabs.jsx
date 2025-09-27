@@ -1,31 +1,30 @@
 import React from "react";
 import "./StatusTabs.css";
 
-export default function StatusTabs({ selectedStatus, setSelectedStatus }) {
-  const statuses = [
-    "New",
-    "InfoReceived",
-    "OutForPickup",
-    "PickUpFromSeller",
-    "InTransit",
-    "Received at Facility",
-    "Out for Delivery",
-    "AttemptFail",
-    "Delivered",
-    "Available for Pickup",
-    "Exception",
-    "Expired",
+export default function StatusTabs({ selectedStatus, setSelectedStatus, statusCounts = {} }) {
+  const statusConfig = [
+    { key: "All", label: "All Orders", color: "#2563eb" },
+    { key: "New", label: "New", color: "#059669" },
+    { key: "RETURN_REQUESTED", label: "Return Requested", color: "#dc2626" },
+    { key: "PROCESSING", label: "Processing", color: "#ea580c" },
+    { key: "SHIPPED", label: "Shipped", color: "#7c3aed" },
+    { key: "DELIVERED", label: "Delivered", color: "#16a34a" }
   ];
 
   return (
     <div className="status-tabs">
-      {statuses.map((status) => (
+      {statusConfig.map((status) => (
         <button
-          key={status}
-          className={selectedStatus === status ? "active" : ""}
-          onClick={() => setSelectedStatus(status)}
+          key={status.key}
+          className={`status-tab ${selectedStatus === status.key ? "active" : ""}`}
+          onClick={() => setSelectedStatus(status.key)}
+          style={{
+            borderBottom: selectedStatus === status.key ? `3px solid ${status.color}` : 'none',
+            color: selectedStatus === status.key ? status.color : '#666'
+          }}
         >
-          {status}
+          <span className="status-label">{status.label}</span>
+          <span className="status-count">({statusCounts[status.key] || 0})</span>
         </button>
       ))}
     </div>
