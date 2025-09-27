@@ -6,9 +6,6 @@ export default function StatusTabs({ selectedStatus, setSelectedStatus, statusCo
     { key: "All", label: "All Orders", color: "#2563eb" },
     { key: "New", label: "New", color: "#059669" },
     { key: "RETURN_REQUESTED", label: "Return Requested", color: "#dc2626" },
-    { key: "PROCESSING", label: "Processing", color: "#ea580c" },
-    { key: "SHIPPED", label: "Shipped", color: "#7c3aed" },
-    { key: "DELIVERED", label: "Delivered", color: "#16a34a" }
   ];
 
   return (
